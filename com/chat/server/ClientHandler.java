@@ -5,8 +5,16 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientHandler {
+
+    private final String exitMessage = "-exit";
+    private final String privateMessage = "/w";
+    private final String authMessage = "-auth";
+    private final int timeout = 5000;
+
+
     private Server server;
     private Socket socket;
     private DataInputStream in;
@@ -44,14 +52,18 @@ public class ClientHandler {
     }
 
     private void doAuth() {
+        AtomicBoolean isAuthSucceed = new AtomicBoolean(false);
+
         try {
-            while (true) {
+
+            while (!isAuthSucceed.get()) {
+
                 String credentials = in.readUTF();
                 /**
                  * Input credentials sample
                  * "-auth n1@mail.com 1"
                  */
-                if (credentials.startsWith("-auth")) {
+                if (credentials.startsWith(authMessage)) {
                     /**
                      * After splitting sample
                      * array of ["-auth", "n1@mail.com", "1"]
@@ -64,8 +76,9 @@ public class ClientHandler {
                                         if (!server.isLoggedIn(user.getNickname())) {
                                             sendMessage("cmd auth: Status OK");
                                             name = user.getNickname();
-                                            server.broadcastMessage(name + " is logged in.");
+                                            server.broadcastMessage(name + " is logged in.", name);
                                             server.subscribe(this);
+                                            isAuthSucceed.set(true);
                                         } else {
                                             sendMessage("Current user is already logged in.");
                                         }
@@ -85,16 +98,20 @@ public class ClientHandler {
     }
 
     /**
-     * Receives input data from {@link ClientHandler#in} and then broadcast via {@link Server#broadcastMessage(String)}
+     * Receives input data from {@link ClientHandler#in} and then broadcast via {@link Server#broadcastMessage(String, String)}
      */
     private void receiveMessage() {
         try {
             while (true) {
                 String message = in.readUTF();
-                if (message.equals("-exit")) {
+                if (message.equals(exitMessage)) {
                     return;
                 }
-                server.broadcastMessage(message);
+                if (message.startsWith(privateMessage)) {
+                    server.sendPrivateMessage(message, name);
+                } else {
+                    server.broadcastMessage(message, name);
+                }
             }
         } catch (IOException e) {
             throw new RuntimeException("SWW", e);
