@@ -1,5 +1,7 @@
 package com.chat.server;
 
+import com.chat.entity.User;
+
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -9,17 +11,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ClientHandler {
 
-    private final String exitMessage = "-exit";
-    private final String privateMessage = "/w";
-    private final String authMessage = "-auth";
-    private final int timeout = 5000;
+    private static final String exitMessage = "-exit";
+    private static final String privateMessage = "/w";
+    private static final String authMessage = "-auth";
+    private static final String changeNameMessage = "/cn";
 
 
     private Server server;
     private Socket socket;
     private DataInputStream in;
     private DataOutputStream out;
-    private String name;
+    private User user;
 
     public ClientHandler(Server server, Socket socket) {
         try {
@@ -35,7 +37,7 @@ public class ClientHandler {
     }
 
     public String getName() {
-        return name;
+        return user.getNickname();
     }
 
     private void doListen() {
@@ -75,8 +77,8 @@ public class ClientHandler {
                                     user -> {
                                         if (!server.isLoggedIn(user.getNickname())) {
                                             sendMessage("cmd auth: Status OK");
-                                            name = user.getNickname();
-                                            server.broadcastMessage(name + " is logged in.", name);
+                                            this.user = user;
+                                            server.broadcastMessage(user.getNickname() + " is logged in.", user.getNickname());
                                             server.subscribe(this);
                                             isAuthSucceed.set(true);
                                         } else {
@@ -108,13 +110,24 @@ public class ClientHandler {
                     return;
                 }
                 if (message.startsWith(privateMessage)) {
-                    server.sendPrivateMessage(message, name);
+                    server.sendPrivateMessage(message, user.getNickname());
                 } else {
-                    server.broadcastMessage(message, name);
+                    server.broadcastMessage(message, user.getNickname());
+                }
+                if (message.startsWith(changeNameMessage)) {
+                    changeName(message);
                 }
             }
         } catch (IOException e) {
             throw new RuntimeException("SWW", e);
+        }
+    }
+
+    private void changeName(String message) {
+        String[] messageValues = message.split("\\s");
+        if (messageValues.length > 1) {
+            server.getUserService().changeName(user, messageValues[1]);
+            user.setNickname(messageValues[1]);
         }
     }
 
@@ -135,11 +148,11 @@ public class ClientHandler {
                 Objects.equals(socket, that.socket) &&
                 Objects.equals(in, that.in) &&
                 Objects.equals(out, that.out) &&
-                Objects.equals(name, that.name);
+                Objects.equals(user.getNickname(), user.getNickname());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(server, socket, in, out, name);
+        return Objects.hash(server, socket, in, out, user.getNickname());
     }
 }

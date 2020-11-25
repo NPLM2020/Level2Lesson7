@@ -1,6 +1,7 @@
 package com.chat.server;
 
 import com.chat.auth.AuthenticationService;
+import com.chat.users.UserService;
 
 public interface Server {
     void broadcastMessage(String message, String from);
@@ -14,4 +15,6 @@ public interface Server {
     void unsubscribe(ClientHandler client);
 
     AuthenticationService getAuthenticationService();
+
+    UserService getUserService();
 }

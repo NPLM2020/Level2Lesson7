@@ -2,6 +2,8 @@ package com.chat.server;
 
 import com.chat.auth.AuthenticationService;
 import com.chat.auth.BasicAuthenticationService;
+import com.chat.database.PostgresService;
+import com.chat.users.UserService;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -15,13 +17,16 @@ import java.util.Set;
 public class ChatServer implements Server {
     private Set<ClientHandler> clients;
     private AuthenticationService authenticationService;
+    private UserService userService;
 
-    public ChatServer() {
+
+    public ChatServer(DatabaseManager databaseService) {
         try {
             System.out.println("Server is starting up...");
             ServerSocket serverSocket = new ServerSocket(8888);
             clients = new HashSet<>();
-            authenticationService = new BasicAuthenticationService();
+            authenticationService = new BasicAuthenticationService(databaseService);
+            userService = new UserService(databaseService);
             System.out.println("Server is started up...");
 
             while (true) {
@@ -80,6 +85,11 @@ public class ChatServer implements Server {
     @Override
     public AuthenticationService getAuthenticationService() {
         return authenticationService;
+    }
+
+    @Override
+    public UserService getUserService() {
+        return userService;
     }
 
     private String buildMessage(String message, String nickname) {
