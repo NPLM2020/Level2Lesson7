@@ -22,4 +22,8 @@ public class User {
     public String getPassword() {
         return password;
     }
+
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
 }
